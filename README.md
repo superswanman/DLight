@@ -1,4 +1,10 @@
-﻿# DLight - Inline evaluation plugin
+# DLight - Inline evaluation plugin
+
+English follows Japanese
+
+## これは何？
+
+![Sample](http://i.imgur.com/WhYTpAH.gif)
 
 ## インストール
 
@@ -23,9 +29,8 @@
 このプラグインは明示してある場合を除き、MITライセンスです。
 詳しくはLICENSEファイルをお読み下さい。
 
-このプラグインはDelphi Detours Libraryを使用しています。
+このプラグインは[Delphi Detours Library](https://github.com/MahdiSafsafi/delphi-detours-library)を使用しています。
 Delphi Detours LibraryはMozilla Public License Version 1.1で提供されています。
-https://github.com/MahdiSafsafi/delphi-detours-library
 
 ## Installation
 
@@ -46,5 +51,5 @@ https://github.com/MahdiSafsafi/delphi-detours-library
 
 This plugin is released under the MIT License, see LICENSE file.
 
-Delphi Detours Library is licensed under Mozilla Public License Version 1.1.
-https://github.com/MahdiSafsafi/delphi-detours-library
+[Delphi Detours Library](https://github.com/MahdiSafsafi/delphi-detours-library) is licensed under Mozilla Public License Version 1.1.
+
