@@ -4,5 +4,5 @@
     "license_type": "MIT",
     "license_file": "LICENSE",
     "platforms": "Win32",
-    "compiler_min": "30"
+    "compiler_min": 30
 }
