@@ -1,0 +1,8 @@
+{
+    "id": "{5343EF34-E1F9-4D78-94C8-1C3439C5A4B1}",
+    "name": "DLight",
+    "license_type": "MIT",
+    "license_file": "LICENSE",
+    "platforms": "Win32",
+    "compiler_min": "30"
+}
