@@ -15,6 +15,7 @@ English follows Japanese
 - Ver.0.0.2
   - 10 Seattleに対応
   - 10.1 Berlin Starter Editionに対応(監視式のみ)
+  - 特定条件下でのデッドロックと特定プラットフォーム下のデバッガでしか動かない問題を修正
 
 - Ver.0.0.1
   - 初回リリース
@@ -43,6 +44,7 @@ Delphi Detours LibraryはMozilla Public License Version 1.1で提供されてい
 - Ver.0.0.2
   - Add support for 10 Seattle
   - Add Support for 10.1 Berlin Starter Edition (Only watch expressions)
+  - Fix some bugs
 
 - Ver.0.0.1
   - First release
