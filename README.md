@@ -53,3 +53,5 @@ This plugin is released under the MIT License, see LICENSE file.
 
 [Delphi Detours Library](https://github.com/MahdiSafsafi/delphi-detours-library) is licensed under Mozilla Public License Version 1.1.
 
+# Misc.
+Delphinus-Support
