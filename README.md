@@ -12,6 +12,9 @@ English follows Japanese
 
 ## 更新履歴
 
+- Ver.0.0.3
+  - マルチバイト文字の横幅が適切に計算できないなかったのを修正
+
 - Ver.0.0.2
   - 10 Seattleに対応
   - 10.1 Berlin Starter Editionに対応(監視式のみ)
@@ -40,6 +43,9 @@ Delphi Detours LibraryはMozilla Public License Version 1.1で提供されてい
 3. Choose "Install" menu
 
 ## History
+
+- Ver.0.0.3
+  - Fix wrong multibyte string width calculation
 
 - Ver.0.0.2
   - Add support for 10 Seattle

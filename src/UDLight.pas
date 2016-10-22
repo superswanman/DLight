@@ -158,6 +158,7 @@ var
   FEvaluateTimer: TTimer;
   FTWatchWindow_GetWatchItemCount: function(Self: TObject): Integer;
   FTrampolineWatchWindowAddWatch: procedure(Self: TObject; const Watch: string; aTabName: string);
+  FCalcDisplayWidth: function(S: string): Integer;
   FOriginalWindowProc: TWndMethod;
   FWatchWindow: TForm;
   FWatchTabList: PStringList;
@@ -438,6 +439,7 @@ var
   idents: TArray<string>;
   item: TExprItem;
   list: TList<TPair<Integer,TExprItem>>;
+  lineTextUtf16: string;
   lineTextUtf8, exprUtf8: UTF8String;
   dispItems: TArray<TExprItem>;
   x, y: Integer;
@@ -583,7 +585,8 @@ begin
     Exit;
 
   // Watch expressions
-  lineTextUtf8 := UTF8String(LowerCase(string(UTF8String(LineText))));
+  lineTextUtf16 := string(UTF8String(LineText));
+  lineTextUtf8 := UTF8String(LowerCase(lineTextUtf16));
   list := TList<TPair<Integer,TExprItem>>.Create;
   try
     for i := 0 to FWatchExpressions.Count-1 do
@@ -632,7 +635,10 @@ begin
 
   if Length(dispItems) = 0 then Exit;
 
-  x := FLeftGutter + (TextWidth - (View.LeftColumn - 1)) * CellSize.cx;
+  if Assigned(FCalcDisplayWidth) then
+    x := FLeftGutter + (FCalcDisplayWidth(lineTextUtf16) - (View.LeftColumn - 1)) * CellSize.cx
+  else
+    x := FLeftGutter + (TextWidth - (View.LeftColumn - 1)) * CellSize.cx;
   y := TextRect.Top;
 
   clipRect := LineRect;
@@ -645,7 +651,7 @@ begin
       for i := Low(dispItems) to High(dispItems) do
       begin
         if i <> Low(dispItems) then
-          DrawPad(2);
+          DrawPad;
 
         item := dispItems[i];
         if item.TypeName = 'TColor' then
@@ -961,6 +967,7 @@ begin
   FTWatchWindow_GetWatchItemCount := TRttiInstanceProperty(propWatchCount).PropInfo^.GetProc;
   coreIdePackageName := ExtractFileName(typ.Package.Name);
   @FTrampolineWatchWindowAddWatch := InterceptCreate(coreIdePackageName, '@Watchwin@TWatchWindow@AddWatch$qqrx20System@UnicodeString20System@UnicodeString', @MyWatchWindowAddWatch);
+  @FCalcDisplayWidth := GetProcAddress(GetModuleHandle(PChar(coreIdePackageName)), '@Edprocs@CalcDisplayWidth$qqr20System@UnicodeString');
 end;
 
 function GetWatchTabList: PStringList;
