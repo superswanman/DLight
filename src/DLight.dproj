@@ -3,7 +3,7 @@
         <ProjectGuid>{55EFDB26-96BE-4C50-8FA6-A5981B5EB816}</ProjectGuid>
         <MainSource>DLight.dpk</MainSource>
         <ProjectVersion>18.1</ProjectVersion>
-        <FrameworkType>None</FrameworkType>
+        <FrameworkType>VCL</FrameworkType>
         <Base>True</Base>
         <Config Condition="'$(Config)'==''">Release</Config>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
@@ -48,7 +48,7 @@
         <GenDll>true</GenDll>
         <SanitizedProjectName>DLight</SanitizedProjectName>
         <GenPackage>true</GenPackage>
-        <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;$(DCC_Namespace)</DCC_Namespace>
+        <DCC_Namespace>System;Xml;Data;Datasnap;Web;Soap;Vcl;Vcl.Imaging;Vcl.Touch;Vcl.Samples;Vcl.Shell;$(DCC_Namespace)</DCC_Namespace>
         <DCC_CBuilderOutput>All</DCC_CBuilderOutput>
         <DCC_DcuOutput>..\obj</DCC_DcuOutput>
         <DCC_ExeOutput>..\</DCC_ExeOutput>
@@ -98,6 +98,10 @@
         <DCCReference Include="detours\UDLight.CPUID.pas"/>
         <DCCReference Include="detours\UDLight.DDetours.pas"/>
         <DCCReference Include="detours\UDLight.InstDecode.pas"/>
+        <DCCReference Include="UDLight.Options.pas">
+            <Form>OptionsForm</Form>
+            <FormType>dfm</FormType>
+        </DCCReference>
         <BuildConfiguration Include="Release">
             <Key>Cfg_2</Key>
             <CfgParent>Base</CfgParent>

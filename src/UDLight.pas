@@ -15,10 +15,11 @@ procedure Register;
 implementation
 
 uses
-  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes,
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Classes, System.IniFiles,
   System.UITypes, System.UIConsts, System.RTLConsts, System.Rtti, System.TypInfo,
   System.Generics.Collections, System.Generics.Defaults, Vcl.Graphics, Vcl.Forms,
-  Vcl.Controls, Vcl.ExtCtrls, Vcl.Tabs, ToolsAPI, DebugAPI, UDLight.DDetours;
+  Vcl.Controls, Vcl.ExtCtrls, Vcl.Tabs, Vcl.Menus, ToolsAPI, DebugAPI,
+  UDLight.Options, UDLight.DDetours;
 
 type
   TExprItem = record
@@ -164,11 +165,40 @@ var
   FWatchTabList: PStringList;
   FLeftGutter: Integer;
   FLeftGutterProp: PPropInfo;
+  FDLightMenu: TMenuItem;
+  FTextColor: TColor = clAqua;
+  FBackgroundColor: TColor = clTeal;
 {$IFDEF DEBUG}
   FEditorNotifierCount: Integer;
   FEditViewNotifierCount: Integer;
   FDebuggerNotifierCount: Integer;
 {$ENDIF}
+
+procedure LoadSettings;
+var
+  ini: TIniFile;
+begin
+  ini := TIniFile.Create(ChangeFileExt(GetModuleName(HInstance), '.ini'));
+  try
+    FTextColor := ini.ReadInteger('Colors', 'Text', FTextColor);
+    FBackgroundColor := ini.ReadInteger('Colors', 'Background', FBackgroundColor);
+  finally
+    ini.Free;
+  end;
+end;
+
+procedure SaveSettings;
+var
+  ini: TIniFile;
+begin
+  ini := TIniFile.Create(ChangeFileExt(GetModuleName(HInstance), '.ini'));
+  try
+    ini.WriteInteger('Colors', 'Text', FTextColor);
+    ini.WriteInteger('Colors', 'Background', FBackgroundColor);
+  finally
+    ini.Free;
+  end;
+end;
 
 function CreateMethod(Self: TObject; Proc: Pointer): TMethod;
 begin
@@ -494,8 +524,8 @@ var
   var
     textWidth: Integer;
   begin
-    Canvas.Brush.Color := clTeal;
-    Canvas.Font.Color := clAqua;
+    Canvas.Brush.Color := FBackgroundColor;
+    Canvas.Font.Color := FTextColor;
     textWidth := Canvas.TextWidth(Text);
     Canvas.TextOut(x, y, Text);
     Inc(x, textWidth);
@@ -506,14 +536,14 @@ var
     width: Integer;
   begin
     width := CellSize.cx * Count;
-    Canvas.Brush.Color := clTeal;
+    Canvas.Brush.Color := FBackgroundColor;
     Canvas.FillRect(Bounds(x, y, width, TextRect.Height));
     Inc(x, width);
   end;
 
   procedure DrawColor(Color: TColor);
   begin
-    Canvas.Brush.Color := clTeal;
+    Canvas.Brush.Color := FBackgroundColor;
     Canvas.FillRect(Bounds(x, y, TextRect.Height, TextRect.Height));
     Canvas.Pen.Color := clBlack;
     Canvas.Brush.Color := ColorToRGB(Color);
@@ -999,25 +1029,43 @@ begin
   Result := PPointer(p)^;
 end;
 
+procedure DLightMenuClick(Self, Sender: TObject);
+begin
+  if not ShowDLightOptions(FTextColor, FBackgroundColor) then Exit;
+  SaveSettings;
+  if FDLightEnabled then
+    DoRepaint;
+end;
+
 procedure Register;
+type
+  TTimerProc = procedure(Self: TTimer; Sender: TObject);
 var
   ctx: TRttiContext;
   typ: TRttiType;
   prop: TRttiProperty;
+  mainMenu: TMainMenu;
+  toolsMenu: TMenuItem;
+  i, j: Integer;
+
+  function CreateTimer(Interval: Integer; OnTimer: TTimerProc): TTimer;
+  begin
+    Result := TTimer.Create(nil);
+    Result.Enabled := False;
+    Result.Interval := Interval;
+    Result.OnTimer := TNotifyEvent(CreateMethod(Result, @OnTimer));
+  end;
+
 begin
+  LoadSettings;
+
   FDebuggerManagerNotifierIndex := DebuggerManagerServices.AddNotifier(TDebuggerManagerNotifier.Create);
   FIDENotifierIndex := (BorlandIDEServices as IOTAServices).AddNotifier(TIDENotifier.Create);
 
   FLocalVariables := TDictionary<string,TExprItem>.Create;
   FWatchExpressions := TList<TExprItem>.Create;
-  FRepaintTimer := TTimer.Create(nil);
-  FRepaintTimer.Enabled := False;
-  FRepaintTimer.Interval := 150;
-  FRepaintTimer.OnTimer := TNotifyEvent(CreateMethod(FRepaintTimer, @TimerRepaint));
-  FEvaluateTimer := TTimer.Create(nil);
-  FEvaluateTimer.Enabled := False;
-  FEvaluateTimer.Interval := 50;
-  FEvaluateTimer.OnTimer := TNotifyEvent(CreateMethod(FEvaluateTimer, @TimerEvaluate));
+  FRepaintTimer := CreateTimer(150, TimerRepaint);
+  FEvaluateTimer := CreateTimer(50, TimerEvaluate);
   GetWatchWindowInfo;
   FWatchTabList := GetWatchTabList;
 
@@ -1027,6 +1075,21 @@ begin
     prop := typ.GetProperty('LeftGutter');
     if prop <> nil then
       FLeftGutterProp := TRttiInstanceProperty(prop).PropInfo;
+  end;
+
+  mainMenu := (BorlandIDEServices as INTAServices).MainMenu;
+  for i := 0 to mainMenu.Items.Count-1 do
+  begin
+    if mainMenu.Items[i].Name <> 'ToolsMenu' then Continue;
+    toolsMenu := mainMenu.Items[i];
+    for j := 0 to toolsMenu.Count-1 do
+    begin
+      if toolsMenu[j].Name <> 'ToolsToolsItem' then Continue;
+      FDLightMenu := NewItem('DLight Options', 0, False, True, TNotifyEvent(CreateMethod(nil, @DLightMenuClick)), 0, 'DLightMenu');
+      toolsMenu.Insert(j, FDLightMenu);
+      Break;
+    end;
+    Break;
   end;
 
 {$IFDEF DEBUG}
@@ -1047,6 +1110,7 @@ begin
   FWatchExpressions.Free;
   if Assigned(FTrampolineWatchWIndowAddWatch) then
     InterceptRemove(@FTrampolineWatchWIndowAddWatch);
+  FDLightMenu.Free;
 
 {$IFDEF DEBUG}
   OutputDebugString(PChar(Format('EditorNotifierCount: %d', [FEditorNotifierCount])));

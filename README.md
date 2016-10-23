@@ -12,6 +12,9 @@ English follows Japanese
 
 ## 更新履歴
 
+- Ver.0.0.4
+  - ツールメニューに色設定を追加
+
 - Ver.0.0.3
   - マルチバイト文字の横幅が適切に計算できないなかったのを修正
 
@@ -43,6 +46,9 @@ Delphi Detours LibraryはMozilla Public License Version 1.1で提供されてい
 3. Choose "Install" menu
 
 ## History
+
+- Ver.0.0.4
+  - Add color options to Tools menu
 
 - Ver.0.0.3
   - Fix wrong multibyte string width calculation
