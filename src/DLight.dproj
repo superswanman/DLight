@@ -99,7 +99,7 @@
         <DCCReference Include="detours\UDLight.DDetours.pas"/>
         <DCCReference Include="detours\UDLight.InstDecode.pas"/>
         <DCCReference Include="UDLight.Options.pas">
-            <Form>OptionsForm</Form>
+            <Form>OptionsFrame</Form>
             <FormType>dfm</FormType>
         </DCCReference>
         <BuildConfiguration Include="Release">

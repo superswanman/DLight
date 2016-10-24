@@ -7,53 +7,29 @@ uses
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls;
 
 type
-  TOptionsForm = class(TForm)
+  TOptionsFrame = class(TFrame)
     Label1: TLabel;
     Label2: TLabel;
     cbTextColor: TColorBox;
     cbBackgroundColor: TColorBox;
     pnlPreview: TPanel;
-    btnOk: TButton;
-    btnCancel: TButton;
     procedure ChangeColor(Sender: TObject);
-  private
+  public
     procedure UpdatePreview;
   end;
-
-function ShowDLightOptions(var TextColor, BackgroundColor: TColor): Boolean;
 
 implementation
 
 {$R *.dfm}
 
-function ShowDLightOptions(var TextColor, BackgroundColor: TColor): Boolean;
-var
-  form: TOptionsForm;
-begin
-  form := TOptionsForm.Create(nil);
-  try
-    form.cbTextColor.Selected := TextColor;
-    form.cbBackgroundColor.Selected := BackgroundColor;
-    form.UpdatePreview;
+{ TOptionsFrame }
 
-    Result := form.ShowModal = mrOk;
-    if not Result then Exit;
-
-    TextColor := form.cbTextColor.Selected;
-    BackgroundColor := form.cbBackgroundColor.Selected;
-  finally
-    form.Free;
-  end;
-end;
-
-{ TOptionsForm }
-
-procedure TOptionsForm.ChangeColor(Sender: TObject);
+procedure TOptionsFrame.ChangeColor(Sender: TObject);
 begin
   UpdatePreview;
 end;
 
-procedure TOptionsForm.UpdatePreview;
+procedure TOptionsFrame.UpdatePreview;
 begin
   pnlPreview.Font.Color := cbTextColor.Selected;
   pnlPreview.Color := cbBackgroundColor.Selected;
