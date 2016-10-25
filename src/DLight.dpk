@@ -38,6 +38,6 @@ contains
   UDLight.CPUID in 'detours\UDLight.CPUID.pas',
   UDLight.DDetours in 'detours\UDLight.DDetours.pas',
   UDLight.InstDecode in 'detours\UDLight.InstDecode.pas',
-  UDLight.Options in 'UDLight.Options.pas' {OptionsForm};
+  UDLight.Options in 'UDLight.Options.pas' {OptionsFrame};
 
 end.
