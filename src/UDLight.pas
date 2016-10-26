@@ -27,8 +27,6 @@ type
     Expr: string;
     Value: string;
     TypeName: string;
-    class function Create(AExpressionInspector: IOTAExpressionInspector): TExprItem; overload; static;
-    class function Create(AExpressionInspector: IOTAExpressionInspector; AMemberIndex: Integer): TExprItem; overload; static;
   end;
 
   TIDENotifier = class(TNotifierObject, IOTAIDENotifier)
@@ -212,24 +210,6 @@ begin
   finally
     ini.Free;
   end;
-end;
-
-{ TExprItem }
-
-class function TExprItem.Create(
-  AExpressionInspector: IOTAExpressionInspector): TExprItem;
-begin
-  Result.Expr := AExpressionInspector.FullExpression;
-  Result.Value := AExpressionInspector.Value;
-  Result.TypeName := AExpressionInspector.TypeName;
-end;
-
-class function TExprItem.Create(AExpressionInspector: IOTAExpressionInspector;
-  AMemberIndex: Integer): TExprItem;
-begin
-  Result.Expr := AExpressionInspector.MemberName[eimtData, AMemberIndex];
-  Result.Value := AExpressionInspector.MemberValue[eimtData, AMemberIndex];
-  Result.TypeName := AExpressionInspector.MemberType[eimtData, AMemberIndex];
 end;
 
 { TIDENotifier }
@@ -854,7 +834,9 @@ begin
     item := list[i];
     if Assigned(item^.ExpressionInspector) then
     begin
-      expr := TExprItem.Create(item^.ExpressionInspector);
+      expr.Expr := item^.ExpressionInspector.FullExpression;
+      expr.Value := item^.ExpressionInspector.Value;
+      expr.TypeName := item^.ExpressionInspector.TypeName;
       FWatchExpressions.Add(expr);
     end
     else if not item^.EvalErr then
@@ -967,7 +949,7 @@ end;
 
 function TDLightAddInOptions.GetArea: string;
 begin
-  Result := 'Debugger Options';
+  Result := GetUIString(uisDebuggerOptions);
 end;
 
 function TDLightAddInOptions.GetCaption: string;
@@ -1087,11 +1069,6 @@ begin
   Inc(p);
 
   Result := PPointer(p)^;
-end;
-
-procedure DLightMenuClick(Self, Sender: TObject);
-begin
-  (BorlandIDEServices as IOTAServices).GetEnvironmentOptions.EditOptions('Debugger Options', 'DLight');
 end;
 
 procedure Register;
