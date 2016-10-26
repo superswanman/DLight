@@ -1,17 +1,9 @@
-object OptionsForm: TOptionsForm
+object OptionsFrame: TOptionsFrame
   Left = 0
   Top = 0
-  BorderStyle = bsDialog
-  Caption = 'DLight Options'
-  ClientHeight = 163
-  ClientWidth = 173
-  Color = clBtnFace
-  ParentFont = True
-  OldCreateOrder = False
-  Position = poMainFormCenter
-  Scaled = False
-  PixelsPerInch = 96
-  TextHeight = 13
+  Width = 320
+  Height = 240
+  TabOrder = 0
   object Label1: TLabel
     Left = 8
     Top = 8
@@ -53,23 +45,5 @@ object OptionsForm: TOptionsForm
     Caption = 'I=12345'
     ParentBackground = False
     TabOrder = 2
-  end
-  object btnOk: TButton
-    Left = 8
-    Top = 130
-    Width = 75
-    Height = 25
-    Caption = 'OK'
-    ModalResult = 1
-    TabOrder = 3
-  end
-  object btnCancel: TButton
-    Left = 89
-    Top = 130
-    Width = 75
-    Height = 25
-    Caption = 'Cancel'
-    ModalResult = 2
-    TabOrder = 4
   end
 end

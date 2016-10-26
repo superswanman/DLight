@@ -117,6 +117,20 @@ type
     procedure DebuggerRemoved(const Debugger: IOTADebugger);
   end;
 
+  TDLightAddInOptions = class(TInterfacedObject, INTAAddInOptions)
+  private
+    FFrame: TOptionsFrame;
+  public
+    procedure DialogClosed(Accepted: Boolean);
+    procedure FrameCreated(AFrame: TCustomFrame);
+    function GetArea: string;
+    function GetCaption: string;
+    function GetFrameClass: TCustomFrameClass;
+    function GetHelpContext: Integer;
+    function ValidateContents: Boolean;
+    function IncludeInIDEInsight: Boolean;
+  end;
+
   PStringList = ^TStringList;
 
   PWatchItem = ^TWatchItem;
@@ -150,6 +164,7 @@ var
   FDLightEnabled: Boolean;
   FIDENotifierIndex: Integer = -1;
   FDebuggerManagerNotifierIndex: Integer = -1;
+  FDLightAddInOptions: TDLightAddInOptions = nil;
   FLocalVariables: TDictionary<string,TExprItem>;
   FWatchExpressions: TList<TExprItem>;
   FCurrentBuffer: IOTAEditBuffer;
@@ -164,9 +179,7 @@ var
   FWatchWindow: TForm;
   FWatchTabList: PStringList;
   FCurrentEditControl: TObject;
-//  FLeftGutter: Integer;
   FLeftGutterProp: PPropInfo;
-  FDLightMenu: TMenuItem;
   FTextColor: TColor = clAqua;
   FBackgroundColor: TColor = clTeal;
 {$IFDEF DEBUG}
@@ -928,6 +941,60 @@ begin
       FDebuggerNotifiers[i].Destroyed;
 end;
 
+procedure DoRepaint; forward;
+
+{ TDLightAddInOptions }
+
+procedure TDLightAddInOptions.DialogClosed(Accepted: Boolean);
+begin
+  if Accepted then
+  begin
+    FTextColor := FFrame.cbTextColor.Selected;
+    FBackgroundColor := FFrame.cbBackgroundColor.Selected;
+    SaveSettings;
+    if FDLightEnabled then
+      DoRepaint;
+  end;
+end;
+
+procedure TDLightAddInOptions.FrameCreated(AFrame: TCustomFrame);
+begin
+  FFrame := TOptionsFrame(AFrame);
+  FFrame.cbTextColor.Selected := FTextColor;
+  FFrame.cbBackgroundColor.Selected := FBackgroundColor;
+  FFrame.UpdatePreview;
+end;
+
+function TDLightAddInOptions.GetArea: string;
+begin
+  Result := 'Debugger Options';
+end;
+
+function TDLightAddInOptions.GetCaption: string;
+begin
+  Result := 'DLight';
+end;
+
+function TDLightAddInOptions.GetFrameClass: TCustomFrameClass;
+begin
+  Result := TOptionsFrame;
+end;
+
+function TDLightAddInOptions.GetHelpContext: Integer;
+begin
+  Result := 0;
+end;
+
+function TDLightAddInOptions.IncludeInIDEInsight: Boolean;
+begin
+  Result := True;
+end;
+
+function TDLightAddInOptions.ValidateContents: Boolean;
+begin
+  Result := True;
+end;
+
 procedure DoRepaint;
 var
   i: Integer;
@@ -1024,10 +1091,7 @@ end;
 
 procedure DLightMenuClick(Self, Sender: TObject);
 begin
-  if not ShowDLightOptions(FTextColor, FBackgroundColor) then Exit;
-  SaveSettings;
-  if FDLightEnabled then
-    DoRepaint;
+  (BorlandIDEServices as IOTAServices).GetEnvironmentOptions.EditOptions('Debugger Options', 'DLight');
 end;
 
 procedure Register;
@@ -1055,33 +1119,13 @@ type
     Result := TRttiInstanceProperty(prop).PropInfo;
   end;
 
-  procedure RegisterMenu;
-  var
-    mainMenu: TMainMenu;
-    toolsMenu: TMenuItem;
-    i, j: Integer;
-  begin
-    mainMenu := (BorlandIDEServices as INTAServices).MainMenu;
-    for i := 0 to mainMenu.Items.Count-1 do
-    begin
-      if mainMenu.Items[i].Name <> 'ToolsMenu' then Continue;
-      toolsMenu := mainMenu.Items[i];
-      for j := 0 to toolsMenu.Count-1 do
-      begin
-        if toolsMenu[j].Name <> 'ToolsToolsItem' then Continue;
-        FDLightMenu := NewItem('DLight Options', 0, False, True, TNotifyEvent(CreateMethod(nil, @DLightMenuClick)), 0, 'DLightMenu');
-        toolsMenu.Insert(j, FDLightMenu);
-        Break;
-      end;
-      Break;
-    end;
-  end;
-
 begin
   LoadSettings;
 
   FDebuggerManagerNotifierIndex := DebuggerManagerServices.AddNotifier(TDebuggerManagerNotifier.Create);
   FIDENotifierIndex := (BorlandIDEServices as IOTAServices).AddNotifier(TIDENotifier.Create);
+  FDLightAddInOptions := TDLightAddInOptions.Create;
+  (BorlandIDEServices as INTAEnvironmentOptionsServices).RegisterAddInOptions(FDLightAddInOptions);
 
   FLocalVariables := TDictionary<string,TExprItem>.Create;
   FWatchExpressions := TList<TExprItem>.Create;
@@ -1090,7 +1134,6 @@ begin
   GetWatchWindowInfo;
   FWatchTabList := GetWatchTabList;
   FLeftGutterProp := GetPropInfo('EditorControl.TEditControl', 'LeftGutter');
-  RegisterMenu;
 
 {$IFDEF DEBUG}
   OutputDebugString('DLight installed');
@@ -1103,13 +1146,14 @@ begin
     DebuggerManagerServices.RemoveNotifier(FDebuggerManagerNotifierIndex);
   if FIDENotifierIndex >= 0 then
     (BorlandIDEServices as IOTAServices).RemoveNotifier(FIDENotifierIndex);
+  (BorlandIDEServices as INTAEnvironmentOptionsServices).UnregisterAddInOptions(FDLightAddInOptions);
+  FDLightAddInOptions := nil;
 
   FRepaintTimer.Free;
   FEvaluateTimer.Free;
   FLocalVariables.Free;
   FWatchExpressions.Free;
   InterceptRemove(@FTrampolineWatchWIndowAddWatch);
-  FDLightMenu.Free;
 
 {$IFDEF DEBUG}
   OutputDebugString(PChar(Format('EditorNotifierCount: %d', [FEditorNotifierCount])));
