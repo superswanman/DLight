@@ -12,6 +12,10 @@ English follows Japanese
 
 ## 更新履歴
 
+- Ver.0.0.5
+  - 設定を環境設定に統合(thx @uschuster)
+  - Starter版でもローカル変数を表示できるようにした
+
 - Ver.0.0.4
   - ツールメニューに色設定を追加
 
@@ -47,16 +51,20 @@ Delphi Detours LibraryはMozilla Public License Version 1.1で提供されてい
 
 ## History
 
+- Ver.0.0.5
+  - Integrated the options into environment options (thx @uschuster)
+  - Added local variable support for Starter edition
+
 - Ver.0.0.4
-  - Add color options to Tools menu
+  - Added color options to Tools menu
 
 - Ver.0.0.3
-  - Fix wrong multibyte string width calculation
+  - Fixed wrong multibyte string width calculation
 
 - Ver.0.0.2
-  - Add support for 10 Seattle
-  - Add Support for 10.1 Berlin Starter Edition (Only watch expressions)
-  - Fix some bugs
+  - Added support for 10 Seattle
+  - Added Support for 10.1 Berlin Starter Edition (Only watch expressions)
+  - Fixed some bugs
 
 - Ver.0.0.1
   - First release
