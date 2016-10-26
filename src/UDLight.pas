@@ -19,7 +19,7 @@ uses
   System.UITypes, System.UIConsts, System.RTLConsts, System.Rtti, System.TypInfo,
   System.Generics.Collections, System.Generics.Defaults, Vcl.Graphics, Vcl.Forms,
   Vcl.Controls, Vcl.ExtCtrls, Vcl.Tabs, Vcl.Menus, ToolsAPI, DebugAPI,
-  UDLight.Options, UDLight.DDetours;
+  UDLight.Options, UDLight.DDetours, UDLight.Debug, UDLight.Utils;
 
 type
   TExprItem = record
@@ -163,7 +163,8 @@ var
   FOriginalWindowProc: TWndMethod;
   FWatchWindow: TForm;
   FWatchTabList: PStringList;
-  FLeftGutter: Integer;
+  FCurrentEditControl: TObject;
+//  FLeftGutter: Integer;
   FLeftGutterProp: PPropInfo;
   FDLightMenu: TMenuItem;
   FTextColor: TColor = clAqua;
@@ -198,12 +199,6 @@ begin
   finally
     ini.Free;
   end;
-end;
-
-function CreateMethod(Self: TObject; Proc: Pointer): TMethod;
-begin
-  TMethod(Result).Code := Proc;
-  TMethod(Result).Data := Self;
 end;
 
 { TExprItem }
@@ -300,7 +295,6 @@ begin
   begin
     FEditViewNotifiers.Add(TEditViewNotifier.Create(FSourceEditor.EditViews[i]));
   end;
-
 end;
 
 destructor TEditorNotifier.Destroy;
@@ -389,9 +383,9 @@ procedure TEditViewNotifier.BeginPaint(const View: IOTAEditView; var FullRepaint
     Result := nil;
   end;
 
-var
-  control: TWinControl;
 begin
+  FCurrentEditControl := nil;
+
   if FRepaintAll then
   begin
     FullRepaint := True;
@@ -400,9 +394,7 @@ begin
 
   if FDLightEnabled and (FLeftGutterProp <> nil) then
   begin
-    control := FindEditControl(View.GetEditWindow.Form);
-    if control <> nil then
-    FLeftGutter := GetOrdProp(control, FLeftGutterProp);
+    FCurrentEditControl := FindEditControl(View.GetEditWindow.Form);
   end;
 end;
 
@@ -475,6 +467,7 @@ var
   x, y: Integer;
   clipRect: TRect;
   rgn: HRGN;
+  leftGutter: Integer;
 
   function TryStrToColor(const S: string; out Name: string; out Color: TColor): Boolean;
   var
@@ -665,14 +658,19 @@ begin
 
   if Length(dispItems) = 0 then Exit;
 
-  if Assigned(FCalcDisplayWidth) then
-    x := FLeftGutter + (FCalcDisplayWidth(lineTextUtf16) - (View.LeftColumn - 1)) * CellSize.cx
+  if Assigned(FCurrentEditControl) and Assigned(FLeftGutterProp) then
+    leftGutter := GetOrdProp(FCurrentEditControl, FLeftGutterProp)
   else
-    x := FLeftGutter + (TextWidth - (View.LeftColumn - 1)) * CellSize.cx;
+    leftGutter := 0;
+
+  if Assigned(FCalcDisplayWidth) then
+    x := leftGutter + (FCalcDisplayWidth(lineTextUtf16) - (View.LeftColumn - 1)) * CellSize.cx
+  else
+    x := leftGutter + (TextWidth - (View.LeftColumn - 1)) * CellSize.cx;
   y := TextRect.Top;
 
   clipRect := LineRect;
-  clipRect.Left := FLeftGutter;
+  clipRect.Left := leftGutter;
   rgn := CreateRectRgn(clipRect.Left, clipRect.Top, clipRect.Right, clipRect.Bottom);
   try
     SelectClipRgn(Canvas.Handle, rgn);
@@ -803,23 +801,18 @@ end;
 
 procedure GetLocalVariables;
 var
-  debuggerLocalVariables: IOTADebuggerLocalVariables;
-  expressionInspector: IOTAExpressionInspector;
-  i, memberCount: Integer;
   item: TExprItem;
+  member: TLocalVariable;
 begin
   FLocalVariables.Clear;
   if not FDLightEnabled then
     Exit;
-  if not Supports(DebuggerManagerServices.CurrentDebugger, IOTADebuggerLocalVariables, debuggerLocalVariables) then
-    Exit;
-  if debuggerLocalVariables.InspectLocalVariables(expressionInspector) <> erOK then
-    Exit;
 
-  memberCount := expressionInspector.MemberCount[eimtData];
-  for i := 0 to memberCount-1 do
+  for member in GetCurrentLocalVariables do
   begin
-    item := TExprItem.Create(expressionInspector, i);
+    item.Expr := member.VarName;
+    item.Value := member.VarValue;
+    item.TypeName := member.VarType;
     FLocalVariables.Add(LowerCase(item.Expr), item);
   end;
 end;
@@ -1040,13 +1033,6 @@ end;
 procedure Register;
 type
   TTimerProc = procedure(Self: TTimer; Sender: TObject);
-var
-  ctx: TRttiContext;
-  typ: TRttiType;
-  prop: TRttiProperty;
-  mainMenu: TMainMenu;
-  toolsMenu: TMenuItem;
-  i, j: Integer;
 
   function CreateTimer(Interval: Integer; OnTimer: TTimerProc): TTimer;
   begin
@@ -1054,6 +1040,41 @@ var
     Result.Enabled := False;
     Result.Interval := Interval;
     Result.OnTimer := TNotifyEvent(CreateMethod(Result, @OnTimer));
+  end;
+
+  function GetPropInfo(const QualifiedClassName, PropName: string): PPropInfo;
+  var
+    ctx: TRttiContext;
+    typ: TRttiType;
+    prop: TRttiProperty;
+  begin
+    typ := ctx.FindType(QualifiedClassName);
+    if typ = nil then Exit(nil);
+    prop := typ.GetProperty(PropName);
+    if prop = nil then Exit(nil);
+    Result := TRttiInstanceProperty(prop).PropInfo;
+  end;
+
+  procedure RegisterMenu;
+  var
+    mainMenu: TMainMenu;
+    toolsMenu: TMenuItem;
+    i, j: Integer;
+  begin
+    mainMenu := (BorlandIDEServices as INTAServices).MainMenu;
+    for i := 0 to mainMenu.Items.Count-1 do
+    begin
+      if mainMenu.Items[i].Name <> 'ToolsMenu' then Continue;
+      toolsMenu := mainMenu.Items[i];
+      for j := 0 to toolsMenu.Count-1 do
+      begin
+        if toolsMenu[j].Name <> 'ToolsToolsItem' then Continue;
+        FDLightMenu := NewItem('DLight Options', 0, False, True, TNotifyEvent(CreateMethod(nil, @DLightMenuClick)), 0, 'DLightMenu');
+        toolsMenu.Insert(j, FDLightMenu);
+        Break;
+      end;
+      Break;
+    end;
   end;
 
 begin
@@ -1068,29 +1089,8 @@ begin
   FEvaluateTimer := CreateTimer(50, TimerEvaluate);
   GetWatchWindowInfo;
   FWatchTabList := GetWatchTabList;
-
-  typ := ctx.FindType('EditorControl.TEditControl');
-  if typ <> nil then
-  begin
-    prop := typ.GetProperty('LeftGutter');
-    if prop <> nil then
-      FLeftGutterProp := TRttiInstanceProperty(prop).PropInfo;
-  end;
-
-  mainMenu := (BorlandIDEServices as INTAServices).MainMenu;
-  for i := 0 to mainMenu.Items.Count-1 do
-  begin
-    if mainMenu.Items[i].Name <> 'ToolsMenu' then Continue;
-    toolsMenu := mainMenu.Items[i];
-    for j := 0 to toolsMenu.Count-1 do
-    begin
-      if toolsMenu[j].Name <> 'ToolsToolsItem' then Continue;
-      FDLightMenu := NewItem('DLight Options', 0, False, True, TNotifyEvent(CreateMethod(nil, @DLightMenuClick)), 0, 'DLightMenu');
-      toolsMenu.Insert(j, FDLightMenu);
-      Break;
-    end;
-    Break;
-  end;
+  FLeftGutterProp := GetPropInfo('EditorControl.TEditControl', 'LeftGutter');
+  RegisterMenu;
 
 {$IFDEF DEBUG}
   OutputDebugString('DLight installed');
@@ -1108,8 +1108,7 @@ begin
   FEvaluateTimer.Free;
   FLocalVariables.Free;
   FWatchExpressions.Free;
-  if Assigned(FTrampolineWatchWIndowAddWatch) then
-    InterceptRemove(@FTrampolineWatchWIndowAddWatch);
+  InterceptRemove(@FTrampolineWatchWIndowAddWatch);
   FDLightMenu.Free;
 
 {$IFDEF DEBUG}
