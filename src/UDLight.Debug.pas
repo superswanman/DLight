@@ -175,6 +175,16 @@ type
     property Process: TProcess read GetProcess;
   end;
 
+  EvalResultInfo_t = record
+    returnCode: Integer;
+    exprStr: PAnsiChar;
+    resultStr: PAnsiChar;
+    canModify: Integer;
+    address: DbkProcAddr_t;
+    resultSize: Integer;
+    typeStr: PAnsiChar;
+  end;
+
   InspectGetMemberInfo_t = record
     memberRC: Integer;
     memberIndex: Integer;
@@ -188,7 +198,7 @@ type
   DbkErrInfoData_t = record
     case Integer of
 //      1: (osErrInfo: OsErrInfo_t);
-//      2: (evalResultInfo: EvalResultInfo_t);
+      2: (evalResultInfo: EvalResultInfo_t);
 //      3: (modifyResultInfo: ModifyResultInfo_t);
 //      4: (evalConditionResultInfo: EvalConditionResultInfo_t);
 //      5: (inspectResultInfo: InspectResultInfo_t);
@@ -243,6 +253,7 @@ type
   end;
 
 function GetCurrentLocalVariables: TArray<TLocalVariable>;
+function EvaluateExpression(const Expression: string; out ResultStr: string): Boolean;
 
 implementation
 
@@ -250,23 +261,31 @@ uses
   UDLight.Utils;
 
 var
+  FEvalResult: string;
+  FDeferredEvalResultCompleted: Boolean;
   FMembers: TArray<TLocalVariable>;
   FDeferredMemberIndex: Integer;
   FDeferredGetMemberCompleted: Boolean;
 
-procedure GetMemberComplete(Self, Sender: TObject; var ErrInfo: DbkErrInfo);
+procedure GeInspectComplete(Self, Sender: TObject; var ErrInfo: DbkErrInfo);
 var
   debugger: TDebugger;
 begin
   try
-    if ErrInfo.errInfoTy = 6 then
+    debugger := TDebugger.GetCurrentDbkDebugger;
+    if debugger <> nil then
     begin
-      debugger := TDebugger.GetCurrentDbkDebugger;
-      if debugger <> nil then
-      begin
-        debugger.UnlockEvaluator;
-      end;
+      debugger.UnlockEvaluator;
+    end;
 
+    if ErrInfo.errInfoTy = 2 then
+    try
+      FEvalResult := UTF8ToString(ErrInfo.errInfo.evalResultInfo.resultStr);
+    finally
+      FDeferredEvalResultCompleted := True;
+    end
+    else if ErrInfo.errInfoTy = 6 then
+    try
       if ErrInfo.errInfo.inspectGetMemberInfo.memberRC = 0 then
       begin
         FMembers[FDeferredMemberIndex].VarName := UTF8ToString(ErrInfo.errInfo.inspectGetMemberInfo.memberName);
@@ -275,12 +294,18 @@ begin
         FMembers[FDeferredMemberIndex].VarAddress := ErrInfo.errInfo.inspectGetMemberInfo.memberAddr;
         FMembers[FDeferredMemberIndex].VarFlags := ErrInfo.errInfo.inspectGetMemberInfo.memberFlags;
       end;
+    finally
+      FDeferredMemberIndex := -1;
+      FDeferredGetMemberCompleted := True;
     end;
   finally
-    TDebugKernel.Current.EvApiComplete.Remove(TApiCompleteEvent(CreateMethod(nil, @GetMemberComplete)));
-    FDeferredMemberIndex := -1;
-    FDeferredGetMemberCompleted := True;
+    TDebugKernel.Current.EvApiComplete.Remove(TApiCompleteEvent(CreateMethod(nil, @GeInspectComplete)));
   end;
+end;
+
+function IsDeferred(Status: HRESULT): Boolean;
+begin
+  Result := Status and $60000000 = $60000000;
 end;
 
 function GetCurrentLocalVariables: TArray<TLocalVariable>;
@@ -297,12 +322,6 @@ var
   name, _type, value: PAnsiChar;
   addr: DbkProcAddr_t;
   flags, varType: Cardinal;
-
-  function IsDeferred(Status: HRESULT): Boolean;
-  begin
-    Result := Status and $60000000 = $60000000;
-  end;
-
 begin
   Result := nil;
 
@@ -332,7 +351,6 @@ begin
     dbkInspect.inspkind(inspectorKind);
     if inspectorKind = 3 then Exit;
 
-    count := 0;
     dbkInspect.memberCount(count);
     SetLength(FMembers, count);
     for i := 0 to count-1 do
@@ -342,7 +360,7 @@ begin
         debugger.LockEvaluator;
         FDeferredMemberIndex := i;
         FDeferredGetMemberCompleted := False;
-        TDebugKernel.Current.EvApiComplete.Add(TApiCompleteEvent(CreateMethod(nil, @GetMemberComplete)));
+        TDebugKernel.Current.EvApiComplete.Add(TApiCompleteEvent(CreateMethod(nil, @GeInspectComplete)));
         repeat
           TDebugKernel.Current.ProcessEvents;
           if not FDeferredGetMemberCompleted then
@@ -361,6 +379,41 @@ begin
   finally
     dbkInspect.delInsp;
   end;
+end;
+
+function EvaluateExpression(const Expression: string; out ResultStr: string): Boolean;
+var
+  cpos: CodePos;
+  debugger: TDebugger;
+  process: TProcess;
+  thread: TThread;
+  ret: HRESULT;
+  retStr, retType: array[0..255] of AnsiChar;
+  canModify: Integer;
+  resultAddr: DbkProcAddr_t;
+  resultSize: Integer;
+  evaluatorResultVal: Integer;
+begin
+  Result := False;
+
+  debugger := TDebugger.GetCurrentDbkDebugger;
+  if not Assigned(debugger) then Exit;
+  process := debugger.Process;
+  if not Assigned(process) then Exit;
+  thread := process.CurrentThread;
+  if not Assigned(thread) then Exit;
+  if TDebugKernel.AbortDBKSession then Exit;
+  if process.EvaluatorBusy then Exit;
+
+  FillChar(cpos, SizeOf(cpos), 0);
+  FillChar(retStr, SizeOf(retStr), 0);
+  FillChar(retType, SizeOf(retType), 0);
+  ret := thread.DbkThread.evaluate(PAnsiChar(UTF8String(Expression)), retStr, Length(retStr),
+    canModify, 1, cpos, nil, resultAddr, resultSize, retType, Length(retType), evaluatorResultVal);
+  if IsDeferred(ret) then Exit;
+
+  ResultStr := AnsiDequotedStr(UTF8ToString(retStr), '''');
+  Result := True;
 end;
 
 { TThread }

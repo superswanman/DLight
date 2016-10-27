@@ -163,7 +163,7 @@ var
   FIDENotifierIndex: Integer = -1;
   FDebuggerManagerNotifierIndex: Integer = -1;
   FDLightAddInOptions: TDLightAddInOptions = nil;
-  FLocalVariables: TDictionary<string,TExprItem>;
+  FLocalVariables: TDictionary<string,TLocalVariable>;
   FWatchExpressions: TList<TExprItem>;
   FCurrentBuffer: IOTAEditBuffer;
   FRepaintAll: Boolean;
@@ -452,6 +452,7 @@ procedure TEditViewNotifier.PaintLine(const View: IOTAEditView; LineNumber: Inte
 var
   i, p, lastPos: Integer;
   idents: TArray<string>;
+  localVar: TLocalVariable;
   item: TExprItem;
   list: TList<TPair<Integer,TExprItem>>;
   lineTextUtf16: string;
@@ -640,9 +641,14 @@ begin
     begin
       for i := Low(idents) to High(idents) do
       begin
-        if FLocalVariables.TryGetValue(LowerCase(idents[i]), item) then
+        if FLocalVariables.TryGetValue(LowerCase(idents[i]), localVar) then
         begin
-          item.Expr := idents[i];
+          if localVar.VarFlags = 2 then
+            item.Expr := idents[i] + ': ' + localVar.VarType
+          else
+            item.Expr := idents[i];
+          item.Value := localVar.VarValue;
+          item.TypeName := localVar.VarType;
           dispItems := dispItems + [item];
        end;
       end;
@@ -794,19 +800,28 @@ end;
 
 procedure GetLocalVariables;
 var
-  item: TExprItem;
-  member: TLocalVariable;
+  localVar, tmp: TLocalVariable;
+  ret: string;
 begin
   FLocalVariables.Clear;
   if not FDLightEnabled then
     Exit;
 
-  for member in GetCurrentLocalVariables do
+  for localVar in GetCurrentLocalVariables do
   begin
-    item.Expr := member.VarName;
-    item.Value := member.VarValue;
-    item.TypeName := member.VarType;
-    FLocalVariables.Add(LowerCase(item.Expr), item);
+    if (localVar.VarFlags = 2) and (localVar.VarType = 'TObject') then
+    begin
+      tmp := localVar;
+      if EvaluateExpression('PShortString(PPointer(PByte(PPointer(' + localVar.VarName +')^) + vmtClassName)^)^', ret) then
+      begin
+        tmp.VarType := ret;
+        if (tmp.VarType <> '') and EvaluateExpression(tmp.VarType + '(' + localVar.VarName + ')', ret) then
+          tmp.VarValue := ret;
+      end;
+      FLocalVariables.Add(LowerCase(localVar.VarName), tmp);
+    end
+    else
+      FLocalVariables.Add(LowerCase(localVar.VarName), localVar);
   end;
 end;
 
@@ -1104,7 +1119,7 @@ begin
   FDLightAddInOptions := TDLightAddInOptions.Create;
   (BorlandIDEServices as INTAEnvironmentOptionsServices).RegisterAddInOptions(FDLightAddInOptions);
 
-  FLocalVariables := TDictionary<string,TExprItem>.Create;
+  FLocalVariables := TDictionary<string,TLocalVariable>.Create;
   FWatchExpressions := TList<TExprItem>.Create;
   FRepaintTimer := CreateTimer(150, TimerRepaint);
   FEvaluateTimer := CreateTimer(50, TimerEvaluate);

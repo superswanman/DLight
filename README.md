@@ -12,6 +12,9 @@ English follows Japanese
 
 ## 更新履歴
 
+- Ver.0.0.6
+  - TObject型引数(Senderなど)の真の型名と値を表示するようにした
+
 - Ver.0.0.5
   - 設定を環境設定に統合(thx @uschuster)
   - Starter版でもローカル変数を表示できるようにした
@@ -50,6 +53,9 @@ Delphi Detours LibraryはMozilla Public License Version 1.1で提供されてい
 3. Choose "Install" menu
 
 ## History
+
+- Ver.0.0.6
+  - Display real type name and value of TObject type parameters (e.g. Sender)
 
 - Ver.0.0.5
   - Integrated the options into environment options (thx @uschuster)
