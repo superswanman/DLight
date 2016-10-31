@@ -818,10 +818,12 @@ begin
         if (tmp.VarType <> tmp.VarRealType) and EvaluateExpression(tmp.VarRealType + '(' + localVar.VarName + ')', ret) then
           tmp.VarValue := ret;
       end;
-      FLocalVariables.Add(LowerCase(localVar.VarName), tmp);
+      if not FLocalVariables.ContainsKey(LowerCase(localVar.VarName)) then          {!}
+        FLocalVariables.Add(LowerCase(localVar.VarName), tmp);
     end
     else
-      FLocalVariables.Add(LowerCase(localVar.VarName), localVar);
+      if not FLocalVariables.ContainsKey(LowerCase(localVar.VarName)) then            {!}
+        FLocalVariables.Add(LowerCase(localVar.VarName), localVar);
   end;
 end;
 
