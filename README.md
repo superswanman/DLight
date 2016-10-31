@@ -12,6 +12,10 @@ English follows Japanese
 
 ## 更新履歴
 
+- Ver.0.0.7
+  - ローカル変数名の重複でクラッシュするバグを修正
+  - 型名の表示に関するバグを修正
+
 - Ver.0.0.6
   - TObject型引数(Senderなど)の真の型名と値を表示するようにした
 
@@ -53,6 +57,10 @@ Delphi Detours LibraryはMozilla Public License Version 1.1で提供されてい
 3. Choose "Install" menu
 
 ## History
+
+- Ver.0.0.7
+  - Fixed crashes on duplicate local variables (thx @loLiK-CZ)
+  - Fixed type name bug
 
 - Ver.0.0.6
   - Display real type name and value of TObject type parameters (e.g. Sender)
