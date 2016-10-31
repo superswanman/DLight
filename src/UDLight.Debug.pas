@@ -248,6 +248,7 @@ type
     VarName: string;
     VarValue: string;
     VarType: string;
+    VarRealType: string;
     VarAddress: DbkProcAddr_t;
     VarFlags: Cardinal;
   end;
@@ -291,6 +292,7 @@ begin
         FMembers[FDeferredMemberIndex].VarName := UTF8ToString(ErrInfo.errInfo.inspectGetMemberInfo.memberName);
         FMembers[FDeferredMemberIndex].VarValue := UTF8ToString(ErrInfo.errInfo.inspectGetMemberInfo.memberValue);
         FMembers[FDeferredMemberIndex].VarType := UTF8ToString(ErrInfo.errInfo.inspectGetMemberInfo.memberType);
+        FMembers[FDeferredMemberIndex].VarRealType := FMembers[FDeferredMemberIndex].VarType;
         FMembers[FDeferredMemberIndex].VarAddress := ErrInfo.errInfo.inspectGetMemberInfo.memberAddr;
         FMembers[FDeferredMemberIndex].VarFlags := ErrInfo.errInfo.inspectGetMemberInfo.memberFlags;
       end;
@@ -371,6 +373,7 @@ begin
         FMembers[i].VarName := UTF8ToString(name);
         FMembers[i].VarValue := UTF8ToString(value);
         FMembers[i].VarType := UTF8ToString(_type);
+        FMembers[i].VarRealType := FMembers[i].VarType;
         FMembers[i].VarAddress := addr;
         FMembers[i].VarFlags := flags;
       end;

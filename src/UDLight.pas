@@ -643,8 +643,8 @@ begin
       begin
         if FLocalVariables.TryGetValue(LowerCase(idents[i]), localVar) then
         begin
-          if localVar.VarFlags = 2 then
-            item.Expr := idents[i] + ': ' + localVar.VarType
+          if (localVar.VarFlags = 2) and (localVar.VarType <> localVar.VarRealType) then
+            item.Expr := idents[i] + ': ' + localVar.VarRealType
           else
             item.Expr := idents[i];
           item.Value := localVar.VarValue;
@@ -814,8 +814,8 @@ begin
       tmp := localVar;
       if EvaluateExpression('PShortString(PPointer(PByte(PPointer(' + localVar.VarName +')^) + vmtClassName)^)^', ret) then
       begin
-        tmp.VarType := ret;
-        if (tmp.VarType <> '') and EvaluateExpression(tmp.VarType + '(' + localVar.VarName + ')', ret) then
+        tmp.VarRealType := ret;
+        if (tmp.VarType <> tmp.VarRealType) and EvaluateExpression(tmp.VarRealType + '(' + localVar.VarName + ')', ret) then
           tmp.VarValue := ret;
       end;
       FLocalVariables.Add(LowerCase(localVar.VarName), tmp);
